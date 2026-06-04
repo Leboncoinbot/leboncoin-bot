@@ -58,7 +58,7 @@ def scrape_cars():
         params = {
             'category': '2',
             'region_id': '0',
-            'price_min': '100',
+            'price_min': '15000',
             'price_max': '25000',
             'limit': '20',
             'sort': 'date'
@@ -74,18 +74,26 @@ def scrape_cars():
         return []
 
 def analyze_car(listing):
-    """Analyse une voiture avec Claude"""
+    """Analyse une voiture avec Claude - Cherche marge 30% minimum"""
     try:
         title = listing.get('title', 'N/A')
         price = listing.get('price', 'N/A')
         
-        prompt = f"""Analyse cette annonce voiture:
-- Titre: {title}
-- Prix: {price}€
+        prompt = f"""Analyse cette annonce voiture pour trouver une AFFAIRE avec marge minimum 30%:
 
-Est-ce une bonne affaire (15k-25k€)? Score 0-100.
-Réponds UNIQUEMENT en JSON:
-{{"score": <nombre>, "raison": "<courte raison>"}}"""
+ANNONCE:
+- Titre: {title}
+- Prix affiché: {price}€
+
+QUESTIONS:
+1. Quelle est la valeur réelle/normal de cette voiture sur le marché?
+2. Quelle est la marge? ((Valeur réelle - Prix affiché) / Valeur réelle * 100)
+3. Est-ce une bonne affaire? (Marge >= 30%?)
+
+Réponds UNIQUEMENT en JSON strict:
+{{"prix_marche": <nombre>, "marge_pourcent": <nombre>, "score": <0-100>, "raison": "<courte raison>"}}
+
+Exemple: {{"prix_marche": 18000, "marge_pourcent": 35, "score": 85, "raison": "Bonne marge"}}"""
 
         response = client.messages.create(
             model="claude-opus-4-6",
@@ -98,8 +106,9 @@ Réponds UNIQUEMENT en JSON:
             text = text.split('```')[1].replace('json', '').strip()
         
         return json.loads(text)
-    except:
-        return {"score": 0, "raison": "Erreur"}
+    except Exception as e:
+        print(f"❌ Erreur analyse: {e}")
+        return {"score": 0, "marge_pourcent": 0, "raison": "Erreur"}
 
 def main_loop():
     """Boucle principale"""
@@ -125,26 +134,31 @@ def main_loop():
             
             analysis = analyze_car(listing)
             score = analysis.get('score', 0)
+            marge = analysis.get('marge_pourcent', 0)
+            prix_marche = analysis.get('prix_marche', 0)
             raison = analysis.get('raison', 'N/A')
             
-            if score >= 80:
-                print(f"  ⭐ BONNE AFFAIRE! Score: {score}/100")
+            # ALERTE si marge >= 30% OU score >= 70
+            if marge >= 30 or score >= 70:
+                print(f"  ⭐ BONNE AFFAIRE! Score: {score}/100 | Marge: {marge}%")
                 
                 # Envoyer alerte Telegram
                 msg = f"""
 ⭐ <b>TRÈS BONNE AFFAIRE!</b>
 
 <b>{title}</b>
-💰 Prix: {price}€
-📊 Score: {score}/100
+💰 Prix annonce: {price}€
+📊 Prix marché: {prix_marche}€
+📈 Marge: {marge}%
+🎯 Score: {score}/100
 📝 {raison}
 
 🔗 <a href="{url}">Voir l'annonce</a>
 """
                 send_telegram_alert(msg)
             
-            elif score >= 70:
-                print(f"  📌 Intéressant. Score: {score}/100")
+            elif score >= 60:
+                print(f"  📌 Intéressant. Score: {score}/100 | Marge: {marge}%")
         
         print(f"⏳ Prochain scan dans 15 min...")
         time.sleep(900)
