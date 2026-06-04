@@ -58,7 +58,7 @@ def scrape_cars():
         params = {
             'category': '2',
             'region_id': '0',
-            'price_min': '15000',
+            'price_min': '100',
             'price_max': '25000',
             'limit': '20',
             'sort': 'date'
