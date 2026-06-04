@@ -74,26 +74,23 @@ def scrape_cars():
         return []
 
 def analyze_car(listing):
-    """Analyse une voiture avec Claude - Cherche marge 30% minimum"""
+    """Analyse une voiture avec Claude"""
     try:
         title = listing.get('title', 'N/A')
         price = listing.get('price', 'N/A')
         
-        prompt = f"""Analyse cette annonce voiture pour trouver une AFFAIRE avec marge minimum 30%:
+        prompt = f"""Analyse cette annonce voiture:
 
 ANNONCE:
 - Titre: {title}
-- Prix affiché: {price}€
+- Prix: {price}€
 
-QUESTIONS:
-1. Quelle est la valeur réelle/normal de cette voiture sur le marché?
-2. Quelle est la marge? ((Valeur réelle - Prix affiché) / Valeur réelle * 100)
-3. Est-ce une bonne affaire? (Marge >= 30%?)
+1. Quelle est la valeur réelle de cette voiture?
+2. Quelle est la marge? ((Valeur - Prix) / Valeur * 100)
+3. Score 0-100?
 
-Réponds UNIQUEMENT en JSON strict:
-{{"prix_marche": <nombre>, "marge_pourcent": <nombre>, "score": <0-100>, "raison": "<courte raison>"}}
-
-Exemple: {{"prix_marche": 18000, "marge_pourcent": 35, "score": 85, "raison": "Bonne marge"}}"""
+Réponds UNIQUEMENT en JSON:
+{{"prix_marche": <nombre>, "marge_pourcent": <nombre>, "score": <0-100>, "raison": "<courte raison>"}}"""
 
         response = client.messages.create(
             model="claude-opus-4-6",
@@ -108,7 +105,7 @@ Exemple: {{"prix_marche": 18000, "marge_pourcent": 35, "score": 85, "raison": "B
         return json.loads(text)
     except Exception as e:
         print(f"❌ Erreur analyse: {e}")
-        return {"score": 0, "marge_pourcent": 0, "raison": "Erreur"}
+        return {"score": 0, "marge_pourcent": 0, "prix_marche": 0, "raison": "Erreur"}
 
 def main_loop():
     """Boucle principale"""
@@ -137,13 +134,12 @@ def main_loop():
             marge = analysis.get('marge_pourcent', 0)
             prix_marche = analysis.get('prix_marche', 0)
             raison = analysis.get('raison', 'N/A')
-            # ALERTE si score >= 50 (pour tester Telegram)
-if score >= 50:
-                print(f"  ⭐ BONNE AFFAIRE! Score: {score}/100 | Marge: {marge}%")
+            
+            if score >= 50:
+                print(f"  ⭐ ALERTE! Score: {score}/100 | Marge: {marge}%")
                 
-                # Envoyer alerte Telegram
                 msg = f"""
-⭐ <b>TRÈS BONNE AFFAIRE!</b>
+⭐ <b>BONNE AFFAIRE DÉTECTÉE!</b>
 
 <b>{title}</b>
 💰 Prix annonce: {price}€
@@ -155,9 +151,6 @@ if score >= 50:
 🔗 <a href="{url}">Voir l'annonce</a>
 """
                 send_telegram_alert(msg)
-            
-            elif score >= 60:
-                print(f"  📌 Intéressant. Score: {score}/100 | Marge: {marge}%")
         
         print(f"⏳ Prochain scan dans 15 min...")
         time.sleep(900)
