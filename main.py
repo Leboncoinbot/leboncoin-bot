@@ -1,4 +1,4 @@
-import os
+pythonimport os
 import json
 import time
 import requests
@@ -13,7 +13,14 @@ SCORE_THRESHOLD = 80   # Alerte si score >= 80
 
 # Variables globales
 processed_listings = set()
-client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+
+# Initialiser le client Anthropic correctement
+api_key = os.environ.get("ANTHROPIC_API_KEY")
+if not api_key:
+    print("❌ ERREUR: Variable ANTHROPIC_API_KEY non définie!")
+    exit(1)
+
+client = Anthropic(api_key=api_key)
 
 # ===== FONCTION: SCRAPER LEBONCOIN =====
 def scrape_cars():
@@ -129,7 +136,7 @@ def send_alert(alert_data):
 def main_loop():
     """Boucle infinie qui scrape et analyse"""
     print("🚗 BOT LEBONCOIN LANCÉ!")
-    print(f"Configuration: {SCORE_THRESHOLD}€ min, alerte tous les {SCRAPE_INTERVAL}s")
+    print(f"Configuration: Score threshold {SCORE_THRESHOLD}, scan tous les {SCRAPE_INTERVAL}s")
     print("=" * 60)
     
     iteration = 0
