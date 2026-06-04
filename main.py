@@ -137,9 +137,8 @@ def main_loop():
             marge = analysis.get('marge_pourcent', 0)
             prix_marche = analysis.get('prix_marche', 0)
             raison = analysis.get('raison', 'N/A')
-            
-            # ALERTE si marge >= 30% OU score >= 70
-            if marge >= 30 or score >= 70:
+            # ALERTE si score >= 50 (pour tester Telegram)
+if score >= 50:
                 print(f"  ⭐ BONNE AFFAIRE! Score: {score}/100 | Marge: {marge}%")
                 
                 # Envoyer alerte Telegram
